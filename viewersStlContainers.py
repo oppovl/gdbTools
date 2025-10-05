@@ -34,6 +34,10 @@ def traverse_container(container: gdb.Value, containers_type: StlContainer) -> d
         case StlContainer.UNORD_MAP:
             return traverse_unordered_map(container)
         case StlContainer.UNORD_MULT_MAP:
+            return traverse_unordered_multimap(container)
+        case StlContainer.MAP:
+            return traverse_map(container)
+        case StlContainer.MULT_MAP:
             return traverse_multimap(container)
         case _:
             return {}
@@ -62,16 +66,13 @@ def traverse_deque(deque: gdb.Value) -> dict:
 
     if not m_start or not m_finish:
         return {}
-    # Получаем реальный размер deque
     # size = int(m_finish - M_start)
     size = get_deque_size(deque)
-    # print(f"Expected size: {size}")
 
     if size == 0:
         return {}
 
     chunk_size_elements = int(m_start['_M_last'] - m_start['_M_first'])
-    # print(f"Chunk size in elements: {chunk_size_elements}")
 
     current_node = m_start['_M_node']
     current = m_start['_M_cur']
@@ -85,7 +86,6 @@ def traverse_deque(deque: gdb.Value) -> dict:
     index = 0
 
     while index < size:
-        # Добавляем текущий элемент
         try:
             res[index] = current.dereference()
             index += 1
@@ -103,12 +103,11 @@ def traverse_deque(deque: gdb.Value) -> dict:
         if current_node == finish_node and current == finish:
             break
 
-    # print(f"Actual elements collected: {len(res)}")
     return res
 
 
 def traverse_container_with_underlying_container(container: gdb.Value) -> dict:
-    # TODO Добавить в обработку другие возможные контейнеры
+    # TODO Another containers
     match detect_underlying_container(container.type):
         case StlContainer.DEQUE:
             return traverse_deque(container['c'])
@@ -118,24 +117,73 @@ def traverse_container_with_underlying_container(container: gdb.Value) -> dict:
             return {}
 
 def traverse_stack(stack: gdb.Value) -> dict:
-    # TODO Сделать вывод вершины стека и его дна
+    # TODO Sort from top to bottom if unsorted
     return traverse_container_with_underlying_container(stack)
 
 def traverse_queue(queue: gdb.Value) -> dict:
-    # TODO Сделать вывод вершины и дна
+    # TODO Sort from top to bottom if unsorted
     return traverse_container_with_underlying_container(queue)
 
 
 def traverse_prior_queue(priority_queue: gdb.Value) -> dict:
-    # TODO Сделать вывод в отсортированном виде
+    # TODO Sort values
     return traverse_container_with_underlying_container(priority_queue)
 
 
-def traverse_map(container: gdb.Value) -> dict:
-    # Узнать размер мапы
-    # Узнать тип значений мапы
-    pass
+def traverse_tree_container(tree: gdb.Value) -> dict:
+    value_type = get_container_value_type(tree)
+    if not len(value_type):
+        return {}
+    str_value_type = f"std::pair<{value_type['key']} const, {value_type['value']}>"
+    try:
+        gdb_value_type = gdb.lookup_type(str_value_type)
+    except gdb.error as err:
+        printer.error(f"Error looking type {str_value_type}: {err}")
+        return {}
 
+    root_node = tree['_M_t']['_M_impl']['_M_header']['_M_parent']
+
+    str_node_type = f'std::_Rb_tree_node<{str_value_type}>'
+    try:
+        gdb_node_type = gdb.lookup_type(str_node_type)
+    except gdb.error as err:
+        printer.error(f"Error looking type {str_node_type}: {err}")
+        return {}
+
+    node = root_node.cast(gdb_node_type.pointer())
+    if not node:
+        return {}
+
+    res = dict()
+    traverse_tree(tree, node, gdb_node_type, gdb_value_type, res)
+    return res
+
+
+def traverse_tree(tree: gdb.Value, node: gdb.Value, node_type: gdb.Type, value_type: gdb.Type, result: dict) -> None:
+    node = node.cast(node_type.pointer())
+    if not node:
+        return None
+
+    pair = node.dereference()['_M_storage']['_M_storage'].cast(value_type.pointer()).dereference()
+
+    key = get_string_if_string_or_default(pair['first'], pair['first'])
+    value = get_string_if_string_or_default(pair['second'], pair['second'])
+    result.setdefault(key, []).append(value)
+
+    traverse_tree(tree, node['_M_left'], node_type, value_type, result)
+    traverse_tree(tree, node['_M_right'], node_type, value_type, result)
+
+    return None
+
+
+
+def traverse_map(m: gdb.Value) -> dict:
+    tree_result = traverse_tree_container(m)
+    return {key: value_list[0] for key, value_list in tree_result.items()}
+
+
+def traverse_multimap(multimap: gdb.Value) -> dict:
+    return traverse_tree_container(multimap)
 
 
 def traverse_unordered_container(ucontainer: gdb.Value) -> dict:
@@ -177,17 +225,12 @@ def traverse_unordered_container(ucontainer: gdb.Value) -> dict:
         while node or counter < elements_amount:
             next_node = node['_M_nxt']
             try:
-                # Получаем значение узла
                 val_ptr = node.cast(gdb_hash_node_type.pointer())
                 raw_pair = val_ptr.dereference()['_M_storage']['_M_storage']['__data']
                 pair = raw_pair.cast(gdb_value_type.pointer())
-                maybe_string = recognize_string(pair['first'].type)
-                if maybe_string == str(pair['first'].type):
-                    result.setdefault(pair['first'], []).append(pair['second'])
-                    # result[pair['first']] = pair['second']
-                else:
-                    result.setdefault(get_stl_string_value(pair['first']), []).append(pair['second'])
-                    # result[get_stl_string_value(pair['first'])] = pair['second']
+                key = get_string_if_string_or_default(pair['first'], pair['first'])
+                value = get_string_if_string_or_default(pair['second'], pair['second'])
+                result.setdefault(key, []).append(value)
             except gdb.error as e:
                 printer.error(f"Error occurred while parsing {node}: {e}")
                 continue
@@ -206,12 +249,9 @@ def traverse_unordered_map(umap: gdb.Value) -> dict:
     temp_result = traverse_unordered_container(umap)
     return {key: value_list[0] for key, value_list in temp_result.items()}
 
-def traverse_multimap(container: gdb.Value) -> dict:
-    return traverse_unordered_container(container)
 
-
-def traverse_unordered_multi_map(container: gdb.Value) -> dict:
-    pass
+def traverse_unordered_multimap(unordered_multi_map: gdb.Value) -> dict:
+    return traverse_unordered_container(unordered_multi_map)
 
 
 def traverse_set(container: gdb.Value) -> dict:
@@ -222,11 +262,11 @@ def traverse_unordered_set(container: gdb.Value) -> dict:
     pass
 
 
-def traverse_multi_set(container: gdb.Value) -> dict:
+def traverse_multiset(container: gdb.Value) -> dict:
     pass
 
 
-def traverse_unordered_multi_set(container: gdb.Value) -> dict:
+def traverse_unordered_multiset(container: gdb.Value) -> dict:
     pass
 
 

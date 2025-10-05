@@ -31,8 +31,12 @@ class GetVarType(gdb.Command):
             return None
         
         try:
-            type = self._getType(args[0])
-            printer.data(type)
+            var_type = self._getType(args[0])
+            maybe_string = commonTools.recognize_string(var_type)
+            if maybe_string == str(var_type):
+                printer.data(var_type)
+            else:
+                printer.data(maybe_string)
         except Exception as e:
             printer.error(f"Error occured: {e}")
 

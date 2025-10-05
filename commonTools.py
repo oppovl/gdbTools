@@ -25,11 +25,21 @@ def recognize_string(gdb_type: gdb.Type) -> str:
     basic_type_str = delete_extra_spaces_in_type_str(basic_type_str)
     return consts.typedef_stl_strings_map.get(basic_type_str, basic_type_str)
 
+
 def delete_extra_spaces_in_type_str(string: str) -> str:
     return string.replace(' ', '')
 
+
 def get_stl_string_value(gdb_string_obj: gdb.Value) -> str:
     return gdb_string_obj['_M_dataplus']['_M_p'].string()
+
+
+def get_string_if_string_or_default(value: gdb.Value, default):
+    maybe_string = recognize_string(value.type)
+    if maybe_string == str(value.type):
+        return default
+    else:
+        return get_stl_string_value(value)
 
 def determine_container_type(containerGdbType: gdb.Type) -> consts.StlContainer:
     match = re.search(r'std::[^<]+', str(containerGdbType))

@@ -1,2 +1,2 @@
 # gbdTools
-Some convenient tools for gdb(C++), wrote using Python
+Some convenient tools for debugging C++ programs in gdb
