@@ -2,7 +2,6 @@ commandsNamePrefix = ""
 
 from enum import Enum
 
-
 class StlContainer(Enum):
     ARRAY           = "std::array",
     LIST            = "std::list",

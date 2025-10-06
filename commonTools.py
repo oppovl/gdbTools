@@ -45,14 +45,14 @@ def determine_container_type(containerGdbType: gdb.Type) -> consts.StlContainer:
     match = re.search(r'std::[^<]+', str(containerGdbType))
 
     if not match:
-        return None
+        return consts.StlContainer.UNKNOWN
     
     container_str_type = match.group(0)
 
     match container_str_type:
             case 'std::array':
                 return consts.StlContainer.ARRAY
-            case 'std::list':
+            case 'std::list' | 'std::__cxx11::list':
                 return consts.StlContainer.LIST
             case 'std::vector':
                 return consts.StlContainer.VECTOR

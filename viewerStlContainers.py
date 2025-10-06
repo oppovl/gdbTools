@@ -39,6 +39,8 @@ def traverse_container(container: gdb.Value, containers_type: StlContainer) -> d
             return traverse_map(container)
         case StlContainer.MULT_MAP:
             return traverse_multimap(container)
+        case StlContainer.LIST:
+            return traverse_list(container)
         case _:
             return {}
 
@@ -46,8 +48,32 @@ def traverse_array(array: gdb.Value) -> dict:
     return {i: array['_M_elems'][i] for i in range(get_array_size(array))}
 
     
-def traverse_list(container: gdb.Value) -> dict:
-    pass
+def traverse_list(stdlist: gdb.Value) -> dict:
+    template_args_type = get_container_value_type(stdlist)
+    value_type = template_args_type['value']
+    if not len(template_args_type):
+        return {}
+
+    str_node_type = f"std::_List_node<{template_args_type['value']}>"
+    try:
+        gdb_node_type = gdb.lookup_type(str_node_type)
+    except gdb.error as err:
+        printer.error(f"Error looking type {str_node_type}: {err}")
+        return {}
+    except Exception as err:
+        printer.error(f"Error occurred: {err}")
+        return {}
+
+    size = stdlist['_M_impl']['_M_node']['_M_size']
+    node = stdlist['_M_impl']['_M_node']['_M_next']
+    result = dict()
+    for i in range(size):
+        list_node = node.cast(gdb_node_type.pointer()).dereference()
+        storage = list_node['_M_storage']['_M_storage']
+        value = storage.cast(value_type.pointer()).dereference()
+        result[i] = value
+        node = node['_M_next']
+    return result
 
 
 def traverse_vector(vector: gdb.Value) -> dict:
