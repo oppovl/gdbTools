@@ -22,8 +22,8 @@ def is_address(nameOrAddress: str) -> bool:
 def recognize_string(gdb_type: gdb.Type) -> str:
     basic_type = gdb_type.strip_typedefs()
     basic_type_str = str(basic_type)
-    basic_type_str = delete_extra_spaces_in_type_str(basic_type_str)
-    return consts.typedef_stl_strings_map.get(basic_type_str, basic_type_str)
+    return consts.typedef_stl_strings_map.get(delete_extra_spaces_in_type_str(basic_type_str)
+                                              , basic_type_str)
 
 
 def delete_extra_spaces_in_type_str(string: str) -> str:
@@ -36,6 +36,8 @@ def get_stl_string_value(gdb_string_obj: gdb.Value) -> str:
 
 def get_string_if_string_or_default(value: gdb.Value, default):
     maybe_string = recognize_string(value.type)
+    print(maybe_string)
+    print(str(value.type))
     if maybe_string == str(value.type):
         return default
     else:
@@ -168,6 +170,8 @@ def get_container_value_type(container: gdb.Value) -> dict:
         case consts.StlContainer.UNORD_MULT_MAP:
             return get_two_template_arg(container.type)
         case consts.StlContainer.SET:
+            return get_one_template_arg(container.type)
+        case consts.StlContainer.MULT_SET:
             return get_one_template_arg(container.type)
         case consts.StlContainer.UNORD_SET:
             return get_two_template_arg(container.type)

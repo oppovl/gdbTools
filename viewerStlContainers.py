@@ -41,6 +41,10 @@ def traverse_container(container: gdb.Value, containers_type: StlContainer) -> d
             return traverse_multimap(container)
         case StlContainer.LIST:
             return traverse_list(container)
+        case StlContainer.SET:
+            return traverse_set(container)
+        case StlContainer.MULT_SET:
+            return traverse_multiset(container)
         case _:
             return {}
 
@@ -156,11 +160,17 @@ def traverse_prior_queue(priority_queue: gdb.Value) -> dict:
     return traverse_container_with_underlying_container(priority_queue)
 
 
-def traverse_tree_container(tree: gdb.Value) -> dict:
+def traverse_tree_container(tree: gdb.Value, containers_kind: StlContainer) -> dict:
     value_type = get_container_value_type(tree)
     if not len(value_type):
         return {}
-    str_value_type = f"std::pair<{value_type['key']} const, {value_type['value']}>"
+    str_value_type = ""
+    match containers_kind:
+        case StlContainer.SET | StlContainer.MULT_SET:
+            str_value_type = str(value_type['value'])
+        case _:
+            str_value_type = f"std::pair<{value_type['key']} const, {value_type['value']}>"
+
     try:
         gdb_value_type = gdb.lookup_type(str_value_type)
     except gdb.error as err:
@@ -181,35 +191,40 @@ def traverse_tree_container(tree: gdb.Value) -> dict:
         return {}
 
     res = dict()
-    traverse_tree(tree, node, gdb_node_type, gdb_value_type, res)
+    traverse_tree(tree, containers_kind, node, gdb_node_type, gdb_value_type, res)
     return res
 
 
-def traverse_tree(tree: gdb.Value, node: gdb.Value, node_type: gdb.Type, value_type: gdb.Type, result: dict) -> None:
+def traverse_tree(tree: gdb.Value, containers_kind: StlContainer, node: gdb.Value, node_type: gdb.Type, value_type: gdb.Type, result: dict) -> None:
     node = node.cast(node_type.pointer())
     if not node:
         return None
 
     pair = node.dereference()['_M_storage']['_M_storage'].cast(value_type.pointer()).dereference()
 
-    key = get_string_if_string_or_default(pair['first'], pair['first'])
-    value = get_string_if_string_or_default(pair['second'], pair['second'])
-    result.setdefault(key, []).append(value)
+    match containers_kind:
+        case StlContainer.SET | StlContainer.MULT_SET:
+            result.setdefault(len(result), []).append(pair)
+        case _:
+            print(pair['first'])
+            key = get_string_if_string_or_default(pair['first'], pair['first'])
+            value = get_string_if_string_or_default(pair['second'], pair['second'])
+            result.setdefault(key, []).append(value)
 
-    traverse_tree(tree, node['_M_left'], node_type, value_type, result)
-    traverse_tree(tree, node['_M_right'], node_type, value_type, result)
+    traverse_tree(tree, containers_kind, node['_M_left'], node_type, value_type, result)
+    traverse_tree(tree, containers_kind, node['_M_right'], node_type, value_type, result)
 
     return None
 
 
 
 def traverse_map(m: gdb.Value) -> dict:
-    tree_result = traverse_tree_container(m)
+    tree_result = traverse_tree_container(m, StlContainer.MAP)
     return {key: value_list[0] for key, value_list in tree_result.items()}
 
 
 def traverse_multimap(multimap: gdb.Value) -> dict:
-    return traverse_tree_container(multimap)
+    return traverse_tree_container(multimap, StlContainer.MULT_MAP)
 
 
 def traverse_unordered_container(ucontainer: gdb.Value) -> dict:
@@ -280,16 +295,16 @@ def traverse_unordered_multimap(unordered_multi_map: gdb.Value) -> dict:
     return traverse_unordered_container(unordered_multi_map)
 
 
-def traverse_set(container: gdb.Value) -> dict:
-    pass
+def traverse_set(stdset: gdb.Value) -> dict:
+    return {key: value_list[0] for key, value_list in traverse_tree_container(stdset, StlContainer.SET).items()}
 
 
 def traverse_unordered_set(container: gdb.Value) -> dict:
     pass
 
 
-def traverse_multiset(container: gdb.Value) -> dict:
-    pass
+def traverse_multiset(multiset: gdb.Value) -> dict:
+    return traverse_tree_container(multiset, StlContainer.MULT_SET)
 
 
 def traverse_unordered_multiset(container: gdb.Value) -> dict:
