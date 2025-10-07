@@ -1,8 +1,7 @@
 import gdb
-import os
-import sys
 
-import commonTools
+from source.helpers import commonTools
+
 
 # TODO Реализовать
 

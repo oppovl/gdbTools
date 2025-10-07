@@ -1,6 +1,5 @@
 import gdb
 
-
 # TODO форматировать вывод (отступы и прочее), чтобы ничего не съезжало
 class GdbPrinter:
     """Базовый класс для вывода в GDB"""
@@ -82,3 +81,6 @@ class GdbPrinter:
             self.print(separator.join(formatted_columns))
         else:
             self.print(separator.join(str(col) for col in columns))
+
+
+printer = GdbPrinter()

@@ -12,8 +12,8 @@ import consts
 def is_pointer(variable: gdb.Value) -> bool:
     return variable.type.code is gdb.TYPE_CODE_PTR
 
-def is_address(nameOrAddress: str) -> bool:
-    m = re.match('0x[a-zA-Z0-9]{8,16}', nameOrAddress)
+def is_address(name_or_address: str) -> bool:
+    m = re.match('0x[a-zA-Z0-9]{8,16}', name_or_address)
     if m:
         return True
     return False
@@ -36,15 +36,13 @@ def get_stl_string_value(gdb_string_obj: gdb.Value) -> str:
 
 def get_string_if_string_or_default(value: gdb.Value, default):
     maybe_string = recognize_string(value.type)
-    print(maybe_string)
-    print(str(value.type))
     if maybe_string == str(value.type):
         return default
     else:
         return get_stl_string_value(value)
 
-def determine_container_type(containerGdbType: gdb.Type) -> consts.StlContainer:
-    match = re.search(r'std::[^<]+', str(containerGdbType))
+def determine_container_type(container_gdb_type: gdb.Type) -> consts.StlContainer:
+    match = re.search(r'std::[^<]+', str(container_gdb_type))
 
     if not match:
         return consts.StlContainer.UNKNOWN
@@ -174,9 +172,9 @@ def get_container_value_type(container: gdb.Value) -> dict:
         case consts.StlContainer.MULT_SET:
             return get_one_template_arg(container.type)
         case consts.StlContainer.UNORD_SET:
-            return get_two_template_arg(container.type)
+            return get_one_template_arg(container.type)
         case consts.StlContainer.UNORD_MULT_SET:
-            return get_two_template_arg(container.type)
+            return get_one_template_arg(container.type)
         case _:
             return dict()
 
@@ -208,11 +206,7 @@ def get_array_size(array: gdb.Value) -> int:
 
 def get_vector_size(vector: gdb.Value) -> int:
     return int(vector['_M_impl']['_M_finish'] - vector['_M_impl']['_M_start'])
-    
-def get_stack_size(stack: gdb.Value) -> int:
-    # См. traversStack
-    # Не используется
-    pass
+
 
 def get_deque_size(deque: gdb.Value) -> int:
     return int(deque['_M_impl']['_M_finish'] - deque['_M_impl']['_M_start'])

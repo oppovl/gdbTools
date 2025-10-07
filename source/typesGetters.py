@@ -1,19 +1,16 @@
 import gdb
 import os
 import sys
-import re
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+    sys.path.insert(0, current_dir + "/helpers")
 
-import gdbPrinter
-import commonTools
-import consts
+from helpers import commonTools, gdbPrinter, consts
 
 commandsNamePrefix = consts.commandsNamePrefix
 
-printer = gdbPrinter.GdbPrinter()
+from helpers.gdbPrinter import printer
 
 # !!!!! GET VARIABLE TYPE !!!!!
 # Retruns type like in gdb (with astericses and aliases)
@@ -160,8 +157,3 @@ class GetSimpleContainerType(gdb.Command):
     def __printUsage(self):
         printer.info(f"{self.__commandName } stands for get variable type")
         printer.info(f"Usage: {self.__commandName } <variable name>")
-
-GetVarType()
-GetBaseVarType()
-GetPolyPtrType()
-GetSimpleContainerType()
