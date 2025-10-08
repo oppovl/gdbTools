@@ -8,6 +8,7 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 import consts
+from gdbPrinter import GdbPrinter
 
 def is_pointer(variable: gdb.Value) -> bool:
     return variable.type.code is gdb.TYPE_CODE_PTR
@@ -210,3 +211,20 @@ def get_vector_size(vector: gdb.Value) -> int:
 
 def get_deque_size(deque: gdb.Value) -> int:
     return int(deque['_M_impl']['_M_finish'] - deque['_M_impl']['_M_start'])
+
+
+def print_dict(d: dict) -> None:
+    for index, value in d.items():
+        # TODO Сделать функции для корректной печати разных контейнеров
+        if isinstance(value, list):
+            GdbPrinter().data(f"{index}:")
+            for val in value:
+                var_type = get_variable_type(val)
+                base_type = get_variable_basic_type(val)
+                poly_type = get_polymorh_pointer_type(val)
+                GdbPrinter().data(f"|_\t{val} --> {var_type} : {base_type} : {poly_type}")
+        else:
+            var_type = get_variable_type(value)
+            base_type = get_variable_basic_type(value)
+            poly_type = get_polymorh_pointer_type(value)
+            GdbPrinter().data(f"{index}: {value} --> {var_type} : {base_type} : {poly_type}")

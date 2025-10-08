@@ -9,6 +9,7 @@ if current_dir not in sys.path:
 from helpers.consts import commandsNamePrefix
 from helpers.commonTools import *
 from helpers.gdbPrinter import printer
+from cacher import cache
 
 def get_value_type_from_definition(container: gdb.Value) -> gdb.Type:
     return container.type
@@ -332,14 +333,26 @@ class InspectContainersValueType(gdb.Command):
     def __init__(self):
         super(InspectContainersValueType, self).__init__(f"{commandsNamePrefix}icvt", gdb.COMMAND_USER)
         self.__commandName = commandsNamePrefix + "icvt"
-        self.__parsedTypes = dict()
+        self.__parsed_types = dict()
+        self.__is_caching_enabled = False
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
         argc = len(args)
-        if argc != 1 or (argc == 1 and args[0] == "help"):
-            self.__printUsage()
-            return None
+        match argc:
+            case 1:
+                if args[0] == "--help":
+                    self.__printUsage()
+                    return None
+            case 2:
+                if args[1] == "--cache":
+                    self.__is_caching_enabled = True
+                else:
+                    self.__printUsage()
+                    return None
+            case _:
+                self.__printUsage()
+                return None
 
         try:
             gdb_value = gdb.parse_and_eval(args[0])
@@ -351,20 +364,13 @@ class InspectContainersValueType(gdb.Command):
         res = traverse_container(gdb_value, cont_type)
         if not len(res):
             printer.error(f"{args[0]} is empty or corrupted")
-        for index, value in res.items():
-            # TODO Сделать функции для корректной печати разных контейнеров
-            if isinstance(value, list):
-                printer.data(f"{index}:")
-                for val in value:
-                    var_type = get_variable_type(val)
-                    base_type = get_variable_basic_type(val)
-                    poly_type = get_polymorh_pointer_type(val)
-                    printer.data(f"|_\t{val} --> {var_type} : {base_type} : {poly_type}")
-            else:
-                var_type = get_variable_type(value)
-                base_type = get_variable_basic_type(value)
-                poly_type = get_polymorh_pointer_type(value)
-                printer.data(f"{index}: {value} --> {var_type} : {base_type} : {poly_type}")
+
+        if self.__is_caching_enabled:
+            cache.store(args[0], res)
+
+        print_dict(res)
+
+        return None
 
     def __printUsage(self):
         printer.info(f"{self.__commandName } stands for inspect container's value type")

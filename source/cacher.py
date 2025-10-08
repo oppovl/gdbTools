@@ -8,6 +8,7 @@ if current_dir not in sys.path:
 
 from helpers.consts import commandsNamePrefix
 from helpers.gdbPrinter import printer
+from helpers.commonTools import print_dict
 
 
 class CacheStorage:
@@ -25,7 +26,7 @@ class CacheStorage:
         if key in self._storage_keys:
             return self._storage.get(key)
         else:
-            printer.error(f"Key {key} not found in storage")
+            printer.error(f"Key {key} not found in the storage")
             return {}
 
 
@@ -48,7 +49,7 @@ class CacheStorage:
 
     def list(self) -> None:
         if not len(self._storage_keys):
-            printer.data(f"Storage is empty")
+            printer.data(f"The storage is empty")
         else:
             printer.data(f"Storage keys: {self._storage_keys}")
 
@@ -69,4 +70,57 @@ class CacheList(gdb.Command):
 
         cache.list()
 
+        return None
+
+class CacheGet(gdb.Command):
+    def __init__(self):
+        super(CacheGet, self).__init__(f"{commandsNamePrefix}cache-get", gdb.COMMAND_USER)
+        self.__commandName = commandsNamePrefix + "cache-get"
+
+    def invoke(self, arg, from_tty):
+        args = gdb.string_to_argv(arg)
+        argc = len(args)
+        if argc != 1:
+            printer.error("Unexpected arguments")
+            return None
+
+        res = cache.get(args[0])
+        if not res:
+            return None
+
+        print_dict(res)
+
+        return None
+
+
+class CacheDelete(gdb.Command):
+    def __init__(self):
+        super(CacheDelete, self).__init__(f"{commandsNamePrefix}cache-delete", gdb.COMMAND_USER)
+        self.__commandName = commandsNamePrefix + "cache-delete"
+
+    def invoke(self, arg, from_tty):
+        args = gdb.string_to_argv(arg)
+        argc = len(args)
+        if argc != 1:
+            printer.error("Unexpected arguments")
+            return None
+
+        cache.delete(args[0])
+
+        return None
+
+
+class CacheClear(gdb.Command):
+    def __init__(self):
+        super(CacheClear, self).__init__(f"{commandsNamePrefix}cache-clear", gdb.COMMAND_USER)
+        self.__commandName = commandsNamePrefix + "cache-clear"
+
+    def invoke(self, arg, from_tty):
+        args = gdb.string_to_argv(arg)
+        argc = len(args)
+        if argc != 0:
+            printer.error("Unexpected arguments")
+            return None
+
+        cache.clear()
         return None

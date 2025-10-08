@@ -7,11 +7,11 @@ if current_dir not in sys.path:
 
 from helpers.gdbPrinter import GdbPrinter
 from help import Info, Help
-from Cacher import CacheList
+from cacher import CacheList, CacheGet, CacheDelete, CacheClear
 from typesGetters import GetVarType, GetBaseVarType, GetPolyPtrType, GetSimpleContainerType
 from viewerStlContainers import InspectContainersValueType
 
-__all__ = ['Info', 'Help', 'CacheList', 'InspectContainersValueType', 'GetVarType', 'GetBaseVarType'
+__all__ = ['Info', 'Help', 'CacheList', 'CacheGet', 'CacheDelete', 'CacheClear',  'InspectContainersValueType', 'GetVarType', 'GetBaseVarType'
     , 'GetPolyPtrType', 'GetSimpleContainerType', 'printer']
 
 printer = GdbPrinter()
@@ -22,6 +22,9 @@ Help()
 
 # Cacher
 CacheList()
+CacheGet()
+CacheDelete()
+CacheClear()
 
 # Type getters
 GetVarType()
