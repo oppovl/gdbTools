@@ -7,25 +7,31 @@ if current_dir not in sys.path:
 
 from helpers.gdbPrinter import GdbPrinter
 from help import Info, Help
+from Cacher import CacheList
 from typesGetters import GetVarType, GetBaseVarType, GetPolyPtrType, GetSimpleContainerType
 from viewerStlContainers import InspectContainersValueType
 
-__all__ = ['Info', 'Help', 'InspectContainersValueType', 'GetVarType', 'GetBaseVarType'
+__all__ = ['Info', 'Help', 'CacheList', 'InspectContainersValueType', 'GetVarType', 'GetBaseVarType'
     , 'GetPolyPtrType', 'GetSimpleContainerType', 'printer']
 
 printer = GdbPrinter()
 
+# Help
 Info()
 Help()
+
+# Cacher
+CacheList()
+
+# Type getters
 GetVarType()
 GetBaseVarType()
 GetPolyPtrType()
 GetSimpleContainerType()
 
+# Stl container viewer
 InspectContainersValueType()
 
-# TODO Добавить автора, версию?
-printer.info("GDB tools loaded successfully")
-printer.info("Use gdbTools-info for info")
-printer.info("Use gdbTools-help for help")
+
+printer.info("GDB tools loaded successfully\nUse gdbTools-info for info\nUse gdbTools-help for help")
 

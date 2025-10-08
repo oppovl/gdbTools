@@ -11,31 +11,46 @@ from helpers.gdbPrinter import printer
 
 
 class CacheStorage:
-    def __init__():
-        pass
+    def __init__(self):
+        self._storage = dict()
+        self._storage_keys = list()
 
 
-    def store(self):
-        pass
+    def store(self, key: str, value: dict) -> None:
+        self._storage[key] = value
+        self._storage_keys.append(key)
 
 
-    def get(self):
-        pass
+    def get(self, key: str) -> dict:
+        if key in self._storage_keys:
+            return self._storage.get(key)
+        else:
+            printer.error(f"Key {key} not found in storage")
+            return {}
 
 
-    def delete(self):
-        pass
+    def delete(self, key: str) -> None:
+        if key in self._storage_keys:
+            self._storage.pop(key)
+            self._storage_keys.remove(key)
 
 
-    def update(self):
-        pass
+    def update(self, key: str, value: dict) -> None:
+        if key in self._storage_keys:
+            self._storage[key] = value
+        else:
+            self.store(key, value)
 
 
-    def clear(self):
-        pass
+    def clear(self) -> None:
+        self._storage.clear()
+        self._storage_keys.clear()
 
-    def list(self):
-        pass
+    def list(self) -> None:
+        if not len(self._storage_keys):
+            printer.data(f"Storage is empty")
+        else:
+            printer.data(f"Storage keys: {self._storage_keys}")
 
 
 cache = CacheStorage()
@@ -43,7 +58,7 @@ cache = CacheStorage()
 class CacheList(gdb.Command):
     def __init__(self):
         super(CacheList, self).__init__(f"{commandsNamePrefix}cache-list", gdb.COMMAND_USER)
-        self.__commandName = commandsNamePrefix + "cache"
+        self.__commandName = commandsNamePrefix + "cache-list"
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
@@ -52,6 +67,6 @@ class CacheList(gdb.Command):
             printer.error("Unexpected arguments")
             return None
 
-        printer.data(cache.list())
+        cache.list()
 
         return None
