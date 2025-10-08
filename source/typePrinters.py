@@ -16,4 +16,4 @@ class StringTypePrinter:
 
 class StringRecognizer:
     def recognize(self, gdb_type) -> str:
-        return commonTools.recognize_string(gdb_type)
+        return commonTools.try_recognize_string(gdb_type)

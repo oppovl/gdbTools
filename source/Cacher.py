@@ -1,6 +1,16 @@
 import gdb
+import os
+import sys
 
-class Cacher:
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from helpers.consts import commandsNamePrefix
+from helpers.gdbPrinter import printer
+
+
+class CacheStorage:
     def __init__():
         pass
 
@@ -24,38 +34,24 @@ class Cacher:
     def clear(self):
         pass
 
+    def list(self):
+        pass
 
-class GetVarType(gdb.Command):
+
+cache = CacheStorage()
+
+class CacheList(gdb.Command):
     def __init__(self):
-        super(GetVarType, self).__init__(f"{commandsNamePrefix}gvt", gdb.COMMAND_USER)
-        self.__commandName = commandsNamePrefix + "gvt"
+        super(CacheList, self).__init__(f"{commandsNamePrefix}cache-list", gdb.COMMAND_USER)
+        self.__commandName = commandsNamePrefix + "cache"
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
         argc = len(args)
-        if argc != 1 or (argc == 1 and args[0] == "help"):
-            self.__printUsage()
+        if argc != 0:
+            printer.error("Unexpected arguments")
             return None
 
-        try:
-            var_type = self._getType(args[0])
-            maybe_string = commonTools.recognize_string(var_type)
-            if maybe_string == str(var_type):
-                printer.data(var_type)
-            else:
-                printer.data(maybe_string)
-        except Exception as e:
-            printer.error(f"Error occured: {e}")
+        printer.data(cache.list())
 
-    def _getType(self, identificator: str) -> gdb.Type:
-
-        if commonTools.is_address(identificator):
-            printer.warning("It seems like an address. Cast to a pointer to some type and try again")
-            return None
-
-        gdbObj = gdb.parse_and_eval(identificator)
-        return commonTools.get_variable_type(gdbObj)
-
-    def __printUsage(self):
-        printer.info(f"{self.__commandName } stands for get variable type")
-        printer.info(f"Usage: {self.__commandName } <variable name>")
+        return None

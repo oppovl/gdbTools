@@ -19,7 +19,7 @@ def is_address(name_or_address: str) -> bool:
     return False
 
 
-def recognize_string(gdb_type: gdb.Type) -> str:
+def try_recognize_string(gdb_type: gdb.Type) -> str:
     basic_type = gdb_type.strip_typedefs()
     basic_type_str = str(basic_type)
     return consts.typedef_stl_strings_map.get(delete_extra_spaces_in_type_str(basic_type_str)
@@ -35,7 +35,7 @@ def get_stl_string_value(gdb_string_obj: gdb.Value) -> str:
 
 
 def get_string_if_string_or_default(value: gdb.Value, default):
-    maybe_string = recognize_string(value.type)
+    maybe_string = try_recognize_string(value.type)
     if maybe_string == str(value.type):
         return default
     else:

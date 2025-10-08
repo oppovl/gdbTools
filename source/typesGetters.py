@@ -13,8 +13,7 @@ commandsNamePrefix = consts.commandsNamePrefix
 from helpers.gdbPrinter import printer
 
 # !!!!! GET VARIABLE TYPE !!!!!
-# Retruns type like in gdb (with astericses and aliases)
-# Saves result in $result by default
+# Returns type like in gdb (with astericses and aliases)
 class GetVarType(gdb.Command):
     def __init__(self):
         super(GetVarType, self).__init__(f"{commandsNamePrefix}gvt", gdb.COMMAND_USER)
@@ -29,7 +28,7 @@ class GetVarType(gdb.Command):
         
         try:
             var_type = self._getType(args[0])
-            maybe_string = commonTools.recognize_string(var_type)
+            maybe_string = commonTools.try_recognize_string(var_type)
             if maybe_string == str(var_type):
                 printer.data(var_type)
             else:
@@ -52,7 +51,7 @@ class GetVarType(gdb.Command):
 
 
 # !!!!! GET BASIC VARIABLE TYPE !!!!!
-# Trys and returns basic type:
+# Tries and returns basic type:
 #   if typed was declared with using or typedef, it removes alias
 class GetBaseVarType(gdb.Command):
     def __init__(self):
@@ -67,8 +66,9 @@ class GetBaseVarType(gdb.Command):
             return None
         
         try:
-            type = self._getType(args[0])
-            printer.data(type)
+            var_type = self._getType(args[0])
+            maybe_string = commonTools.try_recognize_string(var_type)
+            printer.data(maybe_string)
         except gdb.error as e:
             printer.error(f"Error occured: {e}")
 
@@ -101,8 +101,9 @@ class GetPolyPtrType(gdb.Command):
             return None
         
         try:
-            type = self._getType(args[0])
-            printer.data(type)
+            var_type = self._getType(args[0])
+            maybe_string = commonTools.try_recognize_string(var_type)
+            printer.data(maybe_string)
         except gdb.error as e:
             printer.error(f"Error occured: {e}")
 
@@ -123,8 +124,8 @@ class GetPolyPtrType(gdb.Command):
         printer.info(f"Usage: {self.__commandName } <variable name>")
 
 # !!!!! GET CONTAINER'S VALUE TYPE !!!!!
-# Tryes to get the value's container's type
-# Doen't perform any actions on type, just print it
+# Tries to get the value's container's type
+# Doesn't perform any actions on type, just print it
 class GetSimpleContainerType(gdb.Command):
     def __init__(self):
         super(GetSimpleContainerType, self).__init__(f"{commandsNamePrefix}gcvt", gdb.COMMAND_USER)
@@ -139,9 +140,12 @@ class GetSimpleContainerType(gdb.Command):
             try:
                 type = self._getType(args[0])
                 if type['key'] == None:
-                    printer.data(type['value'])
+                    maybe_string = commonTools.try_recognize_string(type['value'])
+                    printer.data(maybe_string)
                 else:
-                    printer.data(f"kye: {type['key']}, value: {type['value']}")
+                    key_maybe_str = commonTools.try_recognize_string(type['key'])
+                    value_maybe_str = commonTools.try_recognize_string(type['value'])
+                    printer.data(f"kye: {key_maybe_str}, value: {value_maybe_str}")
             except Exception as e:
                 printer.error(f"Error occured: {e}")
 
