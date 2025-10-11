@@ -334,7 +334,10 @@ class InspectContainersValueType(gdb.Command):
         super(InspectContainersValueType, self).__init__(f"{commandsNamePrefix}icvt", gdb.COMMAND_USER)
         self.__commandName = commandsNamePrefix + "icvt"
         self.__parsed_types = dict()
+        self.__is_help_requested = False
         self.__is_caching_enabled = False
+        self.__is_setting_enabled = False
+        self.__gdb_variable_name = ""
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
@@ -371,6 +374,16 @@ class InspectContainersValueType(gdb.Command):
         print_dict(res)
 
         return None
+
+    def __parse_args(self, args):
+        # Assuming the first element is vairable name
+        for token in args:
+            match token:
+                case "--help":
+                    self.__is_help_requested = True
+                    break
+                case "--cache":
+
 
     def __printUsage(self):
         printer.info(f"{self.__commandName } stands for inspect container's value type")
