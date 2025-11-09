@@ -55,7 +55,7 @@ def string_container_type(container_gdb_type: gdb.Type) -> str:
 
     return match.group(0)
 
-def determine_container_type(container_gdb_type: gdb.Type) -> consts.StlContainer:
+def determine_container_type(container_gdb_type: gdb.Type) -> dict():
     match = re.search(r'std::[^<]+', str(container_gdb_type))
 
     if not match:
@@ -63,39 +63,43 @@ def determine_container_type(container_gdb_type: gdb.Type) -> consts.StlContaine
     
     container_str_type = match.group(0)
 
+    ct = StlContainer.UNKNOWN
+
     match container_str_type:
             case 'std::array':
-                return consts.StlContainer.ARRAY
+                ct = consts.StlContainer.ARRAY
             case 'std::list' | 'std::__cxx11::list':
-                return consts.StlContainer.LIST
+                ct = consts.StlContainer.LIST
             case 'std::vector':
-                return consts.StlContainer.VECTOR
+                ct = consts.StlContainer.VECTOR
             case 'std::stack':
-                return consts.StlContainer.STACK
+                ct = consts.StlContainer.STACK
             case 'std::deque':
-                return consts.StlContainer.DEQUE
+                ct = consts.StlContainer.DEQUE
             case 'std::queue':
-                return consts.StlContainer.QUEUE
+                ct = consts.StlContainer.QUEUE
             case 'std::priority_queue':
-                return consts.StlContainer.PRIOR_QUEUE
+                ct = consts.StlContainer.PRIOR_QUEUE
             case 'std::map':
-                return consts.StlContainer.MAP
+                ct = consts.StlContainer.MAP
             case 'std::unordered_map':
-                return consts.StlContainer.UNORD_MAP
+                ct = consts.StlContainer.UNORD_MAP
             case 'std::multimap':
-                return consts.StlContainer.MULT_MAP
+                ct = consts.StlContainer.MULT_MAP
             case 'std::unordered_multimap':
-                return consts.StlContainer.UNORD_MULT_MAP
+                ct = consts.StlContainer.UNORD_MULT_MAP
             case 'std::set':
-                return consts.StlContainer.SET
+                ct = consts.StlContainer.SET
             case 'std::multiset':
-                return consts.StlContainer.MULT_SET
+                ct = consts.StlContainer.MULT_SET
             case 'std::unordered_set':
-                return consts.StlContainer.UNORD_SET
+                ct = consts.StlContainer.UNORD_SET
             case 'std::unordered_multiset':
-                return consts.StlContainer.UNORD_MULT_SET
+                ct = consts.StlContainer.UNORD_MULT_SET
             case _:
-                return None
+                pass
+
+    return {container_str_type, ct}
         
 
 def get_variable_type(value: gdb.Value) -> gdb.Type:
@@ -191,6 +195,19 @@ def get_container_value_type(container: gdb.Value) -> dict:
             return get_one_template_arg(container.type)
         case _:
             return dict()
+
+
+def get_all_template_parameters(container_type: gdb.Type) -> list:
+    index = 0
+    result = list()
+    while True:
+        try:
+            result.append(container_type.template_argument(index))
+            index += 1
+        # TODO Which exception?
+        except ...:
+            break
+    return result
 
 def get_one_template_arg(container_type: gdb.Type) -> dict:
     return {"key": None, "value": container_type.template_argument(0)}

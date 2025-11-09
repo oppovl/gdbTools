@@ -12,10 +12,11 @@ from helpers.commonTools import *
 from helpers.gdbPrinter import printer
 from cacher import cache
 
+from Proxy.ArrayProxy import ArrayProxy
+from Proxy.ContainerProxyFabric import ContainerProxyFabric
+
 from Accessors.Accessors import make_accessor
 from Accessors.Accessors import GlobalConfig
-from Iterators.Iterators import Iterator
-
 
 def make_iterator_for_container(container: gdb.Value, containers_type: str) -> Iterator:
     match containers_type:
@@ -362,9 +363,15 @@ class InspectValues(gdb.Command):
             printer.error(f"Error occured: {e}")
             return None
 
+        arrayProxy = ContainerProxyFabric().create(gdb_value)
+        printer.warning(arrayProxy.underlyingGdbObject())
+        printer.warning(arrayProxy.begin())
+        begin = arrayProxy.begin()
+        printer.warning(begin.value())
+
         # cont_type = determine_container_type(get_value_type_from_definition(gdb_value))
 
-        iter = make_iterator_for_container(gdb_value, string_container_type(get_type_from_definition(gdb_value)))
+        # iter = make_iterator_for_container(gdb_value, string_container_type(get_type_from_definition(gdb_value)))
         # printer.debug(f"Accessor: {accessor}")
         # printer.debug(f"Values: {accessor.operation()}")
         # values = accessor.operation()
