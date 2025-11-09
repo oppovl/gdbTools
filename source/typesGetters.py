@@ -117,7 +117,7 @@ class GetPolyPtrType(gdb.Command):
         if commonTools.is_pointer(gdbObj):
             gdbObj = gdbObj.dereference()
 
-        return commonTools.get_polymorh_pointer_type(gdbObj)
+        return commonTools.get_polymorph_pointer_type(gdbObj)
 
     def __printUsage(self):
         printer.info(f"{self.__commandName } stands for get variable type")

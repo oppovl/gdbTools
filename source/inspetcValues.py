@@ -1,6 +1,7 @@
 import gdb
 import os
 import sys
+import yaml
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -11,49 +12,53 @@ from helpers.commonTools import *
 from helpers.gdbPrinter import printer
 from cacher import cache
 
-def get_value_type_from_definition(container: gdb.Value) -> gdb.Type:
-    return container.type
+from Accessors.Accessors import make_accessor
+from Accessors.Accessors import GlobalConfig
+from Iterators.Iterators import Iterator
 
-def traverse_container(container: gdb.Value, containers_type: consts.StlContainer) -> dict:
+
+def make_iterator_for_container(container: gdb.Value, containers_type: str) -> Iterator:
     match containers_type:
-        case consts.StlContainer.ARRAY:
-            return traverse_array(container)
-        case consts.StlContainer.VECTOR:
+        case 'std::array':
+            return make_array_iterator(container)
+        case 'std::vector':
             return traverse_vector(container)
-        case consts.StlContainer.STACK:
+        case 'std::stack':
             return traverse_stack(container)
-        case consts.StlContainer.DEQUE:
+        case 'std::deque':
             return traverse_deque(container)
-        case consts.StlContainer.QUEUE:
+        case 'std::queue':
             return traverse_queue(container)
-        case consts.StlContainer.PRIOR_QUEUE:
+        case 'std::priority_queue':
             return traverse_prior_queue(container)
-        case consts.StlContainer.UNORD_MAP:
+        case 'std::unordered_map':
             return traverse_unordered_map(container)
-        case consts.StlContainer.UNORD_MULT_MAP:
+        case 'std::unordered_multimap':
             return traverse_unordered_multimap(container)
-        case consts.StlContainer.MAP:
+        case 'std::map':
             return traverse_map(container)
-        case consts.StlContainer.MULT_MAP:
+        case 'std::multimap':
             return traverse_multimap(container)
-        case consts.StlContainer.LIST:
+        case 'std::list' | 'std::__cxx11::list':
             return traverse_list(container)
-        case consts.StlContainer.SET:
+        case 'std::set':
             return traverse_set(container)
-        case consts.StlContainer.MULT_SET:
+        case 'std::multiset':
             return traverse_multiset(container)
-        case consts.StlContainer.UNORD_SET:
+        case 'std::unordered_set':
             return traverse_unordered_set(container)
-        case consts.StlContainer.UNORD_MULT_SET:
+        case 'std::unordered_multiset':
             return traverse_unordered_multiset(container)
         case _:
             printer.error("Unknown container")
             return {}
 
-def traverse_array(array: gdb.Value) -> dict:
+
+def make_array_iterator(array: gdb.Value) -> dict:
+    lyaout = GlobalConfig().get_layout("std::array")
     return {i: array['_M_elems'][i] for i in range(get_array_size(array))}
 
-    
+
 def traverse_list(stdlist: gdb.Value) -> dict:
     template_args_type = get_container_value_type(stdlist)
     value_type = template_args_type['value']
@@ -327,17 +332,11 @@ def traverse_unordered_set(uset: gdb.Value) -> dict:
 def traverse_unordered_multiset(umultiset: gdb.Value) -> dict:
     return traverse_unordered_container(umultiset, consts.StlContainer.UNORD_MULT_SET)
 
-
 # INSPECT
-class InspectContainersValueType(gdb.Command):
+class InspectValues(gdb.Command):
     def __init__(self):
-        super(InspectContainersValueType, self).__init__(f"{commandsNamePrefix}icvt", gdb.COMMAND_USER)
-        self.__commandName = commandsNamePrefix + "icvt"
-        self.__parsed_types = dict()
-        self.__is_help_requested = False
-        self.__is_caching_enabled = False
-        self.__is_setting_enabled = False
-        self.__gdb_variable_name = ""
+        super(InspectValues, self).__init__(f"{commandsNamePrefix}iv", gdb.COMMAND_USER)
+        self.__commandName = commandsNamePrefix + "iv"
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
@@ -363,28 +362,22 @@ class InspectContainersValueType(gdb.Command):
             printer.error(f"Error occured: {e}")
             return None
 
-        cont_type = determine_container_type(get_value_type_from_definition(gdb_value))
-        res = traverse_container(gdb_value, cont_type)
-        if not len(res):
-            printer.error(f"{args[0]} is empty or corrupted")
+        # cont_type = determine_container_type(get_value_type_from_definition(gdb_value))
 
-        if self.__is_caching_enabled:
-            cache.store(args[0], res)
+        iter = make_iterator_for_container(gdb_value, string_container_type(get_type_from_definition(gdb_value)))
+        # printer.debug(f"Accessor: {accessor}")
+        # printer.debug(f"Values: {accessor.operation()}")
+        # values = accessor.operation()
+        # it = ArrayIterator(values, 10)
+        # for value in it:
+        #     printer.debug(value)
 
-        print_dict(res)
+
+        # printer.warning(current_type)
 
         return None
 
-    def __parse_args(self, args):
-        # Assuming the first element is vairable name
-        for token in args:
-            match token:
-                case "--help":
-                    self.__is_help_requested = True
-                    break
-                case "--cache":
-
 
     def __printUsage(self):
-        printer.info(f"{self.__commandName } stands for inspect container's value type")
+        printer.info(f"{self.__commandName } stands for inspect value")
         printer.info(f"Usage: {self.__commandName } <variable name>")

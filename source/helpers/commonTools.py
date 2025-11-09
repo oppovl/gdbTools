@@ -10,6 +10,11 @@ if current_dir not in sys.path:
 import consts
 from gdbPrinter import GdbPrinter
 
+import subprocess
+
+def get_compiler():
+    pass
+
 def is_pointer(variable: gdb.Value) -> bool:
     return variable.type.code is gdb.TYPE_CODE_PTR
 
@@ -41,6 +46,14 @@ def get_string_if_string_or_default(value: gdb.Value, default):
         return default
     else:
         return get_stl_string_value(value)
+
+def string_container_type(container_gdb_type: gdb.Type) -> str:
+    match = re.search(r'std::[^<]+', str(container_gdb_type))
+
+    if not match:
+        return ""
+
+    return match.group(0)
 
 def determine_container_type(container_gdb_type: gdb.Type) -> consts.StlContainer:
     match = re.search(r'std::[^<]+', str(container_gdb_type))
@@ -91,7 +104,7 @@ def get_variable_type(value: gdb.Value) -> gdb.Type:
 def get_variable_basic_type(value: gdb.Value) -> gdb.Type:
     return gdb.types.get_basic_type(value.type)
 
-def get_polymorh_pointer_type(value: gdb.Value) -> gdb.Type:
+def get_polymorph_pointer_type(value: gdb.Value) -> gdb.Type:
     pattern = r"_vptr\.\w+ = 0x[0-9a-f]+ <vtable for ([^+>]+)"
     obj_str = str(value)
     match = re.search(pattern, obj_str)
@@ -205,6 +218,11 @@ def get_container_size(container: gdb.Value, cont_type: consts.StlContainer) -> 
 def get_array_size(array: gdb.Value) -> int:
     return int(array.type.template_argument(1))
 
+
+def get_type_from_definition(obj: gdb.Value) -> gdb.Type:
+    return obj.type
+
+
 def get_vector_size(vector: gdb.Value) -> int:
     return int(vector['_M_impl']['_M_finish'] - vector['_M_impl']['_M_start'])
 
@@ -221,10 +239,10 @@ def print_dict(d: dict) -> None:
             for val in value:
                 var_type = get_variable_type(val)
                 base_type = get_variable_basic_type(val)
-                poly_type = get_polymorh_pointer_type(val)
+                poly_type = get_polymorph_pointer_type(val)
                 GdbPrinter().data(f"|_\t{val} --> {var_type} : {base_type} : {poly_type}")
         else:
             var_type = get_variable_type(value)
             base_type = get_variable_basic_type(value)
-            poly_type = get_polymorh_pointer_type(value)
+            poly_type = get_polymorph_pointer_type(value)
             GdbPrinter().data(f"{index}: {value} --> {var_type} : {base_type} : {poly_type}")
