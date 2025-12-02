@@ -1,7 +1,4 @@
-import gdb
-import os
-import sys
-import yaml
+import gdb, argparse, os, sys, yaml
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -12,48 +9,11 @@ from helpers.commonTools import *
 from helpers.gdbPrinter import printer
 from cacher import cache
 
-from Proxy.ArrayProxy import ArrayProxy
+# from Proxy.ArrayProxy import ArrayProxy
 from Proxy.ContainerProxyFabric import ContainerProxyFabric
 
 from Accessors.Accessors import make_accessor
 from Accessors.Accessors import GlobalConfig
-
-def make_iterator_for_container(container: gdb.Value, containers_type: str) -> Iterator:
-    match containers_type:
-        case 'std::array':
-            return make_array_iterator(container)
-        case 'std::vector':
-            return traverse_vector(container)
-        case 'std::stack':
-            return traverse_stack(container)
-        case 'std::deque':
-            return traverse_deque(container)
-        case 'std::queue':
-            return traverse_queue(container)
-        case 'std::priority_queue':
-            return traverse_prior_queue(container)
-        case 'std::unordered_map':
-            return traverse_unordered_map(container)
-        case 'std::unordered_multimap':
-            return traverse_unordered_multimap(container)
-        case 'std::map':
-            return traverse_map(container)
-        case 'std::multimap':
-            return traverse_multimap(container)
-        case 'std::list' | 'std::__cxx11::list':
-            return traverse_list(container)
-        case 'std::set':
-            return traverse_set(container)
-        case 'std::multiset':
-            return traverse_multiset(container)
-        case 'std::unordered_set':
-            return traverse_unordered_set(container)
-        case 'std::unordered_multiset':
-            return traverse_unordered_multiset(container)
-        case _:
-            printer.error("Unknown container")
-            return {}
-
 
 def make_array_iterator(array: gdb.Value) -> dict:
     lyaout = GlobalConfig().get_layout("std::array")
@@ -333,6 +293,51 @@ def traverse_unordered_set(uset: gdb.Value) -> dict:
 def traverse_unordered_multiset(umultiset: gdb.Value) -> dict:
     return traverse_unordered_container(umultiset, consts.StlContainer.UNORD_MULT_SET)
 
+def create_lambda_filter(expr: str, container_value_type):
+    if expr == None:
+        return lambda x: True
+    validation_pattern = r'^(<=|>=|==|!=|<|>)\S+$'
+    if not re.match(validation_pattern, expr):
+        return lambda x: True
+
+    parsing_pattern = r'^(<=|>=|==|!=|<|>)(.+)$'
+
+    match = re.match(parsing_pattern, expr)
+    if match:
+        operator = match.group(1)
+        value = match.group(2)
+    else:
+        return lambda x: True
+
+    converter = lambda x: x
+    if container_value_type.code == gdb.TYPE_CODE_INT:
+        converter = lambda x: int(x)
+    elif container_value_type.code == gdb.TYPE_CODE_FLT:
+        converter = lambda x:  float(x)
+    elif container_value_type.code == gdb.TYPE_CODE_STRING:
+        converter = lambda x:  str(x)
+    # elif container_value_type.code == gdb.TYPE_CODE_PTR:
+    #     return hex(int(val)) if int(val) != 0 else None
+    elif container_value_type.code == gdb.TYPE_CODE_BOOL:
+        converter = lambda x:  bool(x)
+
+    match operator:
+        case '<=':
+            return lambda x: x <= converter(value)
+        case '>=':
+            return lambda x: x >= converter(value)
+        case '<':
+            return lambda x: x < converter(value)
+        case '>':
+            return lambda x: x > converter(value)
+        case '==':
+            return lambda x: x == converter(value)
+        case '!=':
+            return lambda x: x != converter(value)
+
+    return lambda x: True
+
+
 # INSPECT
 class InspectValues(gdb.Command):
     def __init__(self):
@@ -340,47 +345,59 @@ class InspectValues(gdb.Command):
         self.__commandName = commandsNamePrefix + "iv"
 
     def invoke(self, arg, from_tty):
-        args = gdb.string_to_argv(arg)
-        argc = len(args)
-        match argc:
-            case 1:
-                if args[0] == "--help":
-                    self.__printUsage()
-                    return None
-            case 2:
-                if args[1] == "--cache":
-                    self.__is_caching_enabled = True
-                else:
-                    self.__printUsage()
-                    return None
-            case _:
-                self.__printUsage()
-                return None
+        # TODO Move the parser outside the command and create it only once
+        parser = argparse.ArgumentParser()
+        parser.add_argument('input', type=str, help='Name of variable')
+
+        parser.add_argument('--config', '-c', type=str, help='Name of class description from config file')
+
+        parser.add_argument('--key', '-k', type=str, help="Field's name of class objects which is keys")
+        parser.add_argument('--value', '-v', type=str, help="Field's name of class objects which is values")
+
+        parser.add_argument('--key_acc', '-ka', type=str, help="Access layout")
+        parser.add_argument('--value_acc', '-va', type=str, help="Access layout")
+
+        parser.add_argument('--cache', action='store_true', help="Caches results")
+        parser.add_argument('--store', '-s', type=str, help="Stores results to a variable")
+
+        args = parser.parse_args(arg.split())
 
         try:
-            gdb_value = gdb.parse_and_eval(args[0])
+            gdb_value = gdb.parse_and_eval(args.input)
         except Exception as e:
             printer.error(f"Error occured: {e}")
             return None
 
         arrayProxy = ContainerProxyFabric().create(gdb_value)
-        printer.warning(arrayProxy.underlyingGdbObject())
-        printer.warning(arrayProxy.begin())
-        begin = arrayProxy.begin()
-        printer.warning(begin.value())
 
-        # cont_type = determine_container_type(get_value_type_from_definition(gdb_value))
-
-        # iter = make_iterator_for_container(gdb_value, string_container_type(get_type_from_definition(gdb_value)))
-        # printer.debug(f"Accessor: {accessor}")
-        # printer.debug(f"Values: {accessor.operation()}")
-        # values = accessor.operation()
-        # it = ArrayIterator(values, 10)
-        # for value in it:
-        #     printer.debug(value)
+        key_filter = create_lambda_filter(args.key, arrayProxy.value_type())
+        value_filter = create_lambda_filter(args.value, arrayProxy.value_type())
 
 
-        # printer.warning(current_type)
+
+        node = arrayProxy.begin()
+        values = list()
+        for i in range(arrayProxy.size()):
+            val = node.value()
+            if args.key_acc:
+                key_accessor = make_accessor(args.key_acc)
+            if args.key_acc:
+                value_accessor = make_accessor(args.key_acc)
+            values.append(val)
+            node = node.next()
+
+
+        if type(values[0]) == dict:
+            values[:] = filter(key_filter, values)
+        values[:] = filter(value_filter, values)
+        printer.data(values)
+
+
+        # filtered_values = filter(my_filter, values)
+
+        # printer.warning("#####")
+        # printer.warning(begin.next().value())
+        # printer.warning(arrayProxy.end().prev().value())
 
         return None
 

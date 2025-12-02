@@ -1,6 +1,9 @@
+import gdb
 from abc import ABC, abstractmethod
 
 class NodeInterface(ABC):
+    def __str__(self):
+        return "<NodeInterface>"
     @abstractmethod
     def next(self):
         pass
@@ -14,8 +17,11 @@ class NodeInterface(ABC):
         pass
 
 class ProxyInterface(ABC):
+    def __str__(self):
+        return "<ProxyInterface>"
+
     @abstractmethod
-    def underlyingGdbObject(self) -> gdb.Value:
+    def underlying_gdb_object(self) -> gdb.Value:
         pass
 
     @abstractmethod
@@ -35,9 +41,9 @@ class ProxyInterface(ABC):
         pass
 
     @abstractmethod
-    def containerType(self):
+    def container_type(self):
         pass
 
     @abstractmethod
-    def valueType(self):
+    def value_type(self):
         pass

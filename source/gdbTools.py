@@ -1,7 +1,19 @@
-import os
-import sys
+import os, sys
 
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# if current_dir not in sys.path:
+#     sys.path.insert(0, current_dir)
+
+# Текущая директория и все поддиректории
 current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Добавляем все директории рекурсивно
+sys.path.extend([
+    root for root, dirs, files in os.walk(current_dir)
+    if root not in sys.path
+])
+
+# Также добавляем саму текущую директорию если её нет
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 

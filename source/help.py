@@ -1,6 +1,4 @@
-import gdb
-import os
-import sys
+import gdb, os, sys
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:

@@ -1,7 +1,4 @@
-import gdb
-import yaml
-import os
-import sys
+import gdb, os, sys, yaml
 
 from abc import ABC, abstractmethod
 
@@ -29,7 +26,7 @@ class GlobalConfig:
         return self._config[self._compiler][type]
 
 class ValueAccessor:
-    def __init__(self, data: gdb.Value):
+    def __init__(self, data: gdb.Value = None):
         self._data = data
 
     @abstractmethod
@@ -48,8 +45,9 @@ class FieldStep(StepDecorator):
         return data[self._key]
 
 
-def make_accessor(layout: str, data: gdb.Value, key: str = "") -> ValueAccessor:
-    layout_steps = layout.split(':')[:-1] # cut out the last element which must be value
+def make_accessor(data: gdb.Value, layout: str = "", key: str = "") -> ValueAccessor:
+    # layout_steps = layout.split(':')[:-1] # cut out the last element which must be value
+    layout_steps = layout.split(':')
     accessor = ValueAccessor(data)
 
     if key:
